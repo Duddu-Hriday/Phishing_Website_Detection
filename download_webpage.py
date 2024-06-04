@@ -362,7 +362,7 @@ def compare_images(image1, image2):
 #     return ssim_index, hist_corr
 
 # Main part of the script
-resources_base_dir = 'resources_new'
+resources_base_dir = 'download_websites'
 
 with open('urls.txt', 'r', encoding='utf-8') as f:
     count = 0
