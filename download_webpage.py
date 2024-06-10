@@ -6,6 +6,7 @@
     - Download required resources like css, js, images, other files using requests Library
     - Change the path pointed to the server in the html file to the local path to load them even when offline
 '''
+
 import subprocess
 import os
 import requests
@@ -28,6 +29,8 @@ import io
 
 import cv2
 from skimage.metrics import structural_similarity as ssim
+
+import threading
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -105,7 +108,9 @@ def read_file_with_fallbacks(file_path):
             continue
     raise UnicodeDecodeError(f"Unable to decode file {file_path} with available encodings.")
 
+
 def update_html(html_file, resource_dir):
+    print(f"Updating HTML file: {html_file}")
     if not os.path.isfile(html_file):
         print(f"File not found: {html_file}")
         return
@@ -116,77 +121,75 @@ def update_html(html_file, resource_dir):
         print(e)
         return
 
+    print("Parsing HTML content...")
     soup = BeautifulSoup(html_content, 'html.parser')
-        # Check for base tag
     base_tag = soup.find('base')
     base_url = None
     if base_tag and base_tag.get('href'):
         base_url = base_tag['href']
 
-    for tag in soup.find_all(['link', 'script', 'img', 'iframe','a','meta']):
-        href = tag.get('href')
-        src = tag.get('src')
-        data_src = tag.get('data-src')
-        as_attr = tag.get('as')
+    def process_tags(tags):
+        print(f"Processing {len(tags)} tags...")
+        for tag in tags:
+            href = tag.get('href')
+            src = tag.get('src')
+            data_src = tag.get('data-src')
+            as_attr = tag.get('as')
 
-        # Convert relative paths to absolute paths using base URL
-        if base_url:
-            if href and not href.startswith(('http://', 'https://', '//')):
-                tag['href'] = urljoin(base_url, href)
-            if src and not src.startswith(('http://', 'https://', '//')):
-                tag['src'] = urljoin(base_url, src)
-            if data_src and not data_src.startswith(('http://', 'https://', '//')):
-                tag['data-src'] = urljoin(base_url, data_src)
+            if base_url:
+                if href and not href.startswith(('http://', 'https://', '//')):
+                    tag['href'] = urljoin(base_url, href)
+                if src and not src.startswith(('http://', 'https://', '//')):
+                    tag['src'] = urljoin(base_url, src)
+                if data_src and not data_src.startswith(('http://', 'https://', '//')):
+                    tag['data-src'] = urljoin(base_url, data_src)
 
-    # Remove the base tag
-    if base_tag:
-        base_tag.decompose()
+    def remove_base_tag():
+        nonlocal soup
+        if base_tag:
+            print("Removing base tag...")
+            base_tag.decompose()
 
-    for tag in soup.find_all(['link', 'script', 'img', 'iframe']):
-        href = tag.get('href')
-        src = tag.get('src')
-        data_src = tag.get('data-src')
-        as_attr = tag.get('as')
+    def process_link_tags(tags):
+        print(f"Processing {len(tags)} link tags...")
+        for tag in tags:
+            href = tag.get('href')
+            src = tag.get('src')
+            data_src = tag.get('data-src')
+            as_attr = tag.get('as')
 
-        if tag.name == 'link':
-            if tag.get('rel') == ['stylesheet'] or tag.get('as') == 'style':
-                if href and is_valid_url(href):
-                    css_url = urljoin(html_file, href)
-                    css_filename = sanitize_filename(href, 'css')  # First call to sanitize_filename
-                    local_path = os.path.join('local_resources', 'css', css_filename)
-                    tag['href'] = local_path
-                    download_resource(css_url, os.path.join(resource_dir, 'css'), css_filename)
-            elif tag.get('rel') == ['manifest']:
-                if href and is_valid_url(href):
-                    manifest_url = urljoin(html_file, href)
-                    manifest_filename = sanitize_filename(href, 'css')
-                    tag['href'] = os.path.join('local_resources', 'css', manifest_filename)
-                    download_resource(manifest_url, os.path.join(resource_dir, 'css'), manifest_filename)
-            elif tag.get('rel') == ['icon']:
-                if href and is_valid_url(href):
-                    icon_url = urljoin(html_file, href)
-                    icon_filename = sanitize_filename(href, 'img')
-                    local_path = os.path.join('local_resources', 'img', icon_filename)
-                    tag['href'] = local_path
-                    download_resource(icon_url, os.path.join(resource_dir, 'img'), icon_filename)
-            else:
-                if href and is_valid_url(href):
-                    script_url = urljoin(html_file, href)
-                    script_filename = sanitize_filename(href, 'html')
-                    local_path = os.path.join('local_resources', 'otherlinks', script_filename)
-                    tag['href'] = local_path
-                    download_resource(script_url, os.path.join(resource_dir, 'otherlinks'), script_filename)
+            if tag.name == 'link':
+                if tag.get('rel') == ['stylesheet'] or tag.get('as') == 'style':
+                    if href and is_valid_url(href):
+                        css_url = urljoin(html_file, href)
+                        css_filename = sanitize_filename(href, 'css')  # First call to sanitize_filename
+                        local_path = os.path.join('local_resources', 'css', css_filename)
+                        tag['href'] = local_path
+                        download_resource(css_url, os.path.join(resource_dir, 'css'), css_filename)
+                elif tag.get('rel') == ['manifest']:
+                    if href and is_valid_url(href):
+                        manifest_url = urljoin(html_file, href)
+                        manifest_filename = sanitize_filename(href, 'css')
+                        tag['href'] = os.path.join('local_resources', 'css', manifest_filename)
+                        download_resource(manifest_url, os.path.join(resource_dir, 'css'), manifest_filename)
+                elif tag.get('rel') == ['icon']:
+                    if href and is_valid_url(href):
+                        icon_url = urljoin(html_file, href)
+                        icon_filename = sanitize_filename(href, 'img')
+                        local_path = os.path.join('local_resources', 'img', icon_filename)
+                        tag['href'] = local_path
+                        download_resource(icon_url, os.path.join(resource_dir, 'img'), icon_filename)
+                else:
+                    if href and is_valid_url(href):
+                        script_url = urljoin(html_file, href)
+                        script_filename = sanitize_filename(href, 'html')
+                        local_path = os.path.join('local_resources', 'otherlinks', script_filename)
+                        tag['href'] = local_path
+                        download_resource(script_url, os.path.join(resource_dir, 'otherlinks'), script_filename)
 
-        # elif tag.name == 'meta':
-        #     content = tag.get('content')
-        #     if content and is_valid_url(content):
-        #         js_url = urljoin(html_file, content)
-        #         js_filename = sanitize_filename(content, ' ')
-        #         local_path = os.path.join('local_resources', 'meta', js_filename)
-        #         tag['content'] = local_path
-        #         download_resource(js_url, os.path.join(resource_dir, 'meta'), js_filename)
-
-        elif tag.name == 'script' and tag.get('src'):
+    def process_script_tags(tags):
+        print(f"Processing {len(tags)} script tags...")
+        for tag in tags:
             src = tag.get('src')
             if src and is_valid_url(src):
                 js_url = urljoin(html_file, src)
@@ -195,7 +198,9 @@ def update_html(html_file, resource_dir):
                 tag['src'] = local_path
                 download_resource(js_url, os.path.join(resource_dir, 'js'), js_filename)
 
-        elif tag.name == 'iframe' and tag.get('src'):
+    def process_iframe_tags(tags):
+        print(f"Processing {len(tags)} iframe tags...")
+        for tag in tags:
             src = tag.get('src')
             if src and is_valid_url(src):
                 iframe_url = urljoin(html_file, src)
@@ -204,52 +209,76 @@ def update_html(html_file, resource_dir):
                 tag['src'] = local_path
                 download_resource(iframe_url, os.path.join(resource_dir, 'iframes'), iframe_filename)
 
-    for tag in soup.find_all('img'):
-        src = tag.get('src')
-        if src and is_valid_url(src):
-            img_url = urljoin(html_file, src)
-            img_filename = sanitize_filename(src, 'img')
-            local_path = os.path.join('local_resources', 'img', img_filename)
-            tag['src'] = local_path
-            download_resource(img_url, os.path.join(resource_dir, 'img'), img_filename)
-        data_src = tag.get('data-src')
-        if data_src and is_valid_url(data_src):
-            data_img_url = urljoin(html_file, data_src)
-            data_img_filename = sanitize_filename(data_src, 'img')
-            local_path = os.path.join('local_resources', 'img', data_img_filename)
-            tag['data-src'] = local_path
-            download_resource(data_img_url, os.path.join(resource_dir, 'img'), data_img_filename)
-        if tag.has_attr('srcset'):
-            del tag['srcset']
+    def process_img_tags(tags):
+        print(f"Processing {len(tags)} img tags...")
+        for tag in tags:
+            src = tag.get('src')
+            if src and is_valid_url(src):
+                img_url = urljoin(html_file, src)
+                img_filename = sanitize_filename(src, 'img')
+                local_path = os.path.join('local_resources', 'img', img_filename)
+                tag['src'] = local_path
+                download_resource(img_url, os.path.join(resource_dir, 'img'), img_filename)
+            data_src = tag.get('data-src')
+            if data_src and is_valid_url(data_src):
+                data_img_url = urljoin(html_file, data_src)
+                data_img_filename = sanitize_filename(data_src, 'img')
+                local_path = os.path.join('local_resources', 'img', data_img_filename)
+                tag['data-src'] = local_path
+                tag['src'] = local_path
+                download_resource(data_img_url, os.path.join(resource_dir, 'img'), data_img_filename)
+            if tag.has_attr('srcset'):
+                del tag['srcset']
 
-    for tag in soup.find_all('noscript'):
-        tag.unwrap()
+    def remove_noscript_tags():
+        print("Removing noscript tags...")
+        for tag in soup.find_all('noscript'):
+            tag.unwrap()
 
-    # for tag in soup.find_all('meta', content=True):
-    #     content = tag['content']
-    #     if is_valid_url(content):
-    #         content_url = urljoin(html_file, content)
-    #         content_filename = sanitize_filename(content, ' ')
-    #         local_path = os.path.join('local_resources', 'meta', content_filename)
-    #         tag['content'] = local_path
-    #         download_resource(content_url, os.path.join(resource_dir, 'meta'), content_filename)
+    # Process tags and remove base tag synchronously
+    process_tags(soup.find_all(['link', 'script', 'img', 'iframe','a','meta']))
+    remove_base_tag()
 
-    for source_tag in soup.find_all('source'):
-        source_tag.extract()
+    # Define parallel tasks for remaining operations
+    tasks = [
+        threading.Thread(target=process_link_tags, args=(soup.find_all('link'),)),
+        threading.Thread(target=process_script_tags, args=(soup.find_all('script'),)),
+        threading.Thread(target=process_iframe_tags, args=(soup.find_all('iframe'),)),
+        threading.Thread(target=process_img_tags, args=(soup.find_all('img'),)),
+        threading.Thread(target=remove_noscript_tags)
+    ]
+
+    # Start parallel tasks
+    print("Starting parallel tasks...")
+    for task in tasks:
+        task.start()
+
+    # Wait for all threads to complete
+    print("Waiting for tasks to complete...")
+    for task in tasks:
+        task.join()
 
     with open(html_file, 'w', encoding='utf-8') as f:
         f.write(str(soup))
+    print("Update completed.")
 
 def clean_url(url):
     parsed_url = urlparse(url)
-    clean_path = parsed_url.path
-    cleaned_url = urlunparse((parsed_url.scheme, parsed_url.netloc, clean_path, '', '', ''))
+    
+    # Remove :443 if it is present in the netloc
+    netloc = parsed_url.netloc
+    if netloc.endswith(':443'):
+        netloc = netloc[:-4]  # Remove the :443 part
+    
+    # Reconstruct the URL with only the path component
+    cleaned_url = urlunparse((parsed_url.scheme, netloc, parsed_url.path, '', '', ''))
+    
     return cleaned_url
 
 
 def capture_full_page_screenshot(url, screenshotFile, driver_path='/usr/bin/chromedriver'):
-    print("url = "+url)
-    print("screenshot = "+screenshotFile)
+    print("url = " + url)
+    print("screenshot = " + screenshotFile)
     chrome_options = Options()
     # Set up Chrome options for headless mode
     chrome_options.add_argument('--headless')
@@ -285,20 +314,34 @@ def capture_full_page_screenshot(url, screenshotFile, driver_path='/usr/bin/chro
         # Set the initial viewport height
         viewport_height = driver.execute_script("return window.innerHeight")
 
-        # Capture and stitch the screenshots
-        screenshots = []
-
-        for i in range(0, page_height, viewport_height):
-            driver.execute_script(f"window.scrollTo(0, {i});")
+        # Function to capture screenshot for a portion of the page
+        def capture_screenshot(start, result_list):
+            driver.execute_script(f"window.scrollTo(0, {start});")
             time.sleep(2)  # Adjust sleep time as needed
             screenshot = driver.get_screenshot_as_png()
-            screenshots.append(Image.open(io.BytesIO(screenshot)))
+            result_list.append(Image.open(io.BytesIO(screenshot)))
+
+        # Number of threads
+        # num_threads = page_height // viewport_height + 1
+        threads = []
+        results = []
+
+        # Capture screenshots using threads
+        for i in range(0, page_height, viewport_height):
+            result_list = results  # Shared list for storing thread results
+            thread = threading.Thread(target=capture_screenshot, args=(i, result_list))
+            threads.append(thread)
+            thread.start()
+
+        # Wait for all threads to finish
+        for thread in threads:
+            thread.join()
 
         # Stitch the screenshots vertically
-        full_page_screenshot = Image.new("RGB", (screenshots[0].width, page_height))
+        full_page_screenshot = Image.new("RGB", (driver.execute_script("return window.innerWidth"), page_height))
         y_offset = 0
 
-        for screenshot in screenshots:
+        for screenshot in results:
             full_page_screenshot.paste(screenshot, (0, y_offset))
             y_offset += screenshot.height
 
@@ -317,6 +360,7 @@ def capture_full_page_screenshot(url, screenshotFile, driver_path='/usr/bin/chro
 
     print("|")
     print("--Code exited the screenshot capture function\n")
+
 
 def compare_images(image1, image2):
     # Read images
@@ -362,19 +406,26 @@ def compare_images(image1, image2):
 #     return ssim_index, hist_corr
 
 # Main part of the script
-resources_base_dir = 'download_websites'
 
+
+resources_base_dir = 'download_websites'
+max_wait_time = 300
 with open('urls.txt', 'r', encoding='utf-8') as f:
     count = 0
     for i, line in enumerate(f):
         count+=1
         try:
+            start_time = time.time()
             # folder = line.strip()
             # line = "https://"+line
-            url = line.strip()
-            newurl = "https://"+url
-            cleaned_url = clean_url(url)
-            new_cleaned_url = clean_url(newurl)
+            # url = line.strip()
+            # # newurl = "https://"+url
+            # cleaned_url = clean_url(url)
+            # new_cleaned_url = "https://" + cleaned_url
+            # new_cleaned_url = clean_url(newurl)
+            url = "https://" + line
+            new_cleaned_url = clean_url(url)
+            cleaned_url = new_cleaned_url[8:]
             folder = cleaned_url
             domain = tldextract.extract(cleaned_url).domain
             outer_folder = os.path.join(resources_base_dir, f"{count}_{domain}")
@@ -402,22 +453,6 @@ with open('urls.txt', 'r', encoding='utf-8') as f:
                 new_cleaned_url
             ]
 
-            # command = [
-            #     "wget",
-            #     "--mirror",
-            #     "--convert-links",
-            #     "--adjust-extension",
-            #     "--page-requisites",
-            #     "--no-parent",
-            #     "-U", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            #     "--header=Accept-Language: en-US,en;q=0.5",
-            #     "--header=Accept-Encoding: identity",
-            #     '--timeout=30',
-            #     '-o', 'log.txt',
-            #     '-P', outer_folder,
-            #     cleaned_url
-            # ]
-
             # Prefix the wget command with `timeout 30`
             full_command = ['timeout', '30'] + command
 
@@ -443,19 +478,42 @@ with open('urls.txt', 'r', encoding='utf-8') as f:
             offline = os.path.join(screenshots,'offline.png')
             # print("cleaned_url = "+cleaned_url)
             # print("html_file= "+html_file)
-            # url,file,driver
+            # # url,file,driver
             print("absolute path = "+os.path.abspath(html_file))
             capture_full_page_screenshot(new_cleaned_url,online)
             path_wanted = "file://"+os.path.abspath(html_file)
             capture_full_page_screenshot(path_wanted,offline)
 
+            images = [
+        threading.Thread(target=capture_full_page_screenshot, args=([new_cleaned_url,online],)),
+        threading.Thread(target=capture_full_page_screenshot, args=([path_wanted,offline],)),
+        ]
+            
+            print("Starting image parallel tasks...")
+            for task in images:
+                task.start()
+
+            # Wait for all threads to complete
+            print("Waiting for image tasks to complete...")
+            for task in images:
+                task.join()
+
+            
+
             ssim_index, hist_corr = compare_images(online,offline)
 
-            # print(f"SSIM Index: {ssim_index}")
-            # print(f"Histogram Correlation: {hist_corr}")
+            print(f"SSIM Index: {ssim_index}")
+            print(f"Histogram Correlation: {hist_corr}")
 
             with open('image_comparsion.txt','a') as file:
                 file.write(str(cleaned_url)+"\tSSIM Index = "+str(ssim_index)+"\tHistogram Correlation = "+str(hist_corr)+"\n")
+
+            end_time = time.time()
+            execution_time = end_time - start_time
+            # print("Execution time:", execution_time, "seconds")
+            with open('time.txt','a') as time_file:
+                time_file.write(str(cleaned_url)+" "+str(execution_time)+" -> Using More Threading"+"\n")
+                time_file.close()
 
         except Exception as e:
             logging.error(f"An error occurred with URL {line.strip()}: {e}")
