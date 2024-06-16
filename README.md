@@ -30,8 +30,8 @@ pip install beautifulsoup4 requests urllib3 tldextract chardet selenium webdrive
 ## Instructions:
 - Clone the project into Local Directory
 - Make sure that download_webpage.py and urls.txt are in the same direcotory
-- On running code a new directory by the name download_websites is created.
-- A folder by the name local_resources is created in download_websites directory.
+- On running code a new directory by the name legitimate_resources is created.
+- A folder by the name local_resources is created in legitimate_resources directory.
 - This local_resources folder contains seperate folders for css,js,images and other files.
 - It also forms a folder by the name screenshots, which stores the picture of the locally loaded webpage and the original webpage to calculate the similarity of the local webpage with original one.
 - The similarity calculations are shown in a file named image_comparision.txt
