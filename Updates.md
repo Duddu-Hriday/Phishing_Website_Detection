@@ -12,10 +12,6 @@
 ## Taking a screenshot of the webpage:
 * Online webpage and the Locally Downloaded webpage
 * Using Selenium,Pillow
-* Code taken from Shahil Patel's Git Repo:
-```
-https://github.com/ShahilPatel-IITDh/Deep-Learning-Phishy-Classification/blob/main/MainAlgorithm/screenshotCapture.py
-```
 
 ## Comparing the Similarity of the screenshots (offline and online):
 * Using SSIM Index and Histogram Co-relation **Using `skimage` library**
