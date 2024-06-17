@@ -239,22 +239,22 @@ def update_html(html_file, resource_dir, new_cleaned_url):
             del tag['srcset']
 
 
-    def process_remaining_tags():
-        print(f"Processing other tags...")
+    # def process_remaining_tags():
+    #     print(f"Processing other tags...")
 
-        for meta_tag in soup.find_all('meta', attrs={'http-equiv': 'refresh'}):
-            meta_tag.decompose()
-        for tag in soup.find_all():
-            # Check if tag is one of the specified tags
-            if tag.name in ['a', 'script', 'link', 'iframe', 'img', 'meta', 'form']:
-                continue
+    #     for meta_tag in soup.find_all('meta', attrs={'http-equiv': 'refresh'}):
+    #         meta_tag.decompose()
+    #     for tag in soup.find_all():
+    #         # Check if tag is one of the specified tags
+    #         if tag.name in ['a', 'script', 'link', 'iframe', 'img', 'meta', 'form']:
+    #             continue
             
-            # Check all attributes of the tag for URLs
-            for attr, value in list(tag.attrs.items()):
-                if isinstance(value, str) and value.startswith(('http', 'https')):
-                    # Unwrap the link
-                    tag.unwrap()
-                    break
+    #         # Check all attributes of the tag for URLs
+    #         for attr, value in list(tag.attrs.items()):
+    #             if isinstance(value, str) and value.startswith(('http', 'https')):
+    #                 # Unwrap the link
+    #                 tag.unwrap()
+    #                 break
 
     def remove_source_tags():
         print("Removing source tags")
@@ -311,7 +311,7 @@ def update_html(html_file, resource_dir, new_cleaned_url):
     for thread in all_threads:
         thread.join()
 
-    process_remaining_tags()
+    # process_remaining_tags()
 
     with open(html_file, 'w', encoding='utf-8') as f:
         f.write(str(soup))
