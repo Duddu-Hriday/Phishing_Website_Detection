@@ -61,25 +61,34 @@ def extract_time(input_string):
     return formatted_date_time
 
 def remove_last_part_of_url(url):
+    if not (str(url).startswith('https://') or str(url).startswith('http://')):
+        url = 'https://' + url
+
+    suffix = '...added'
+    if url.endswith(suffix):
+        return url[:-len(suffix)]
+    if url.endswith('added'):
+        return url[:-len('added')]
+    return url
     # Parse the URL into components
-    parts = urlsplit(url)
+    # parts = urlsplit(url)
     
-    # Split the path into parts and remove the last part
-    path_parts = parts.path.split('/')
-    if path_parts[-1] == '':
-        path_parts = path_parts[:-2]  # Remove the last empty part and the preceding part
-    else:
-        path_parts = path_parts[:-1]  # Remove just the last part
+    # # Split the path into parts and remove the last part
+    # path_parts = parts.path.split('/')
+    # if path_parts[-1] == '':
+    #     path_parts = path_parts[:-2]  # Remove the last empty part and the preceding part
+    # else:
+    #     path_parts = path_parts[:-1]  # Remove just the last part
     
-    # Join the remaining path parts back together
-    new_path = '/'.join(path_parts)
+    # # Join the remaining path parts back together
+    # new_path = '/'.join(path_parts)
     
-    # Reconstruct the URL with the new path
-    new_url = urlunsplit((parts.scheme, parts.netloc, new_path, parts.query, parts.fragment))
+    # # Reconstruct the URL with the new path
+    # new_url = urlunsplit((parts.scheme, parts.netloc, new_path, parts.query, parts.fragment))
     
-    if new_url[-5:] == '.html':
-        return new_url
-    return new_url + '/'
+    # if new_url[-5:] == '.html':
+    #     return new_url
+    # return new_url + '/'
 
 def scraping(html):
     if not os.path.exists(html):
