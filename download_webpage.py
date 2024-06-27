@@ -22,39 +22,35 @@ from requests.exceptions import SSLError, ConnectionError, Timeout
 import logging
 import random
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
+
 from PIL import Image
 import time
-from selenium.common.exceptions import WebDriverException
-import io
 
 import cv2
 from skimage.metrics import structural_similarity as ssim
 
 import threading
 
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-
 from selenium.common.exceptions import TimeoutException
 
 import shutil
+
+import pandas
+import csv
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-def modify_url(url):
-    if url.endswith('/'):
-        return url
-    else:
-        parts = url.split('/')
-        # Remove the last part
-        parts.pop()
-        # Reconstruct the URL
-        modified_url = '/'.join(parts)
-        return modified_url
+# def modify_url(url):
+#     if url.endswith('/'):
+#         return url
+#     else:
+#         parts = url.split('/')
+#         # Remove the last part
+#         parts.pop()
+#         # Reconstruct the URL
+#         modified_url = '/'.join(parts)
+#         return modified_url
   
 # Helper functions
 def is_valid_url(url):
@@ -239,22 +235,22 @@ def update_html(html_file, resource_dir, new_cleaned_url):
             del tag['srcset']
 
 
-    # def process_remaining_tags():
-    #     print(f"Processing other tags...")
+    def process_remaining_tags():
+        print(f"Processing other tags...")
 
-    #     for meta_tag in soup.find_all('meta', attrs={'http-equiv': 'refresh'}):
-    #         meta_tag.decompose()
-    #     for tag in soup.find_all():
-    #         # Check if tag is one of the specified tags
-    #         if tag.name in ['a', 'script', 'link', 'iframe', 'img', 'meta', 'form']:
-    #             continue
+        for meta_tag in soup.find_all('meta', attrs={'http-equiv': 'refresh'}):
+            meta_tag.decompose()
+        for tag in soup.find_all():
+            # Check if tag is one of the specified tags
+            if tag.name in ['a', 'script', 'link', 'iframe', 'img', 'meta', 'form']:
+                continue
             
-    #         # Check all attributes of the tag for URLs
-    #         for attr, value in list(tag.attrs.items()):
-    #             if isinstance(value, str) and value.startswith(('http', 'https')):
-    #                 # Unwrap the link
-    #                 tag.unwrap()
-    #                 break
+            # Check all attributes of the tag for URLs
+            for attr, value in list(tag.attrs.items()):
+                if isinstance(value, str) and value.startswith(('http', 'https')):
+                    # Unwrap the link
+                    tag.unwrap()
+                    break
 
     def remove_source_tags():
         print("Removing source tags")
@@ -311,7 +307,7 @@ def update_html(html_file, resource_dir, new_cleaned_url):
     for thread in all_threads:
         thread.join()
 
-    # process_remaining_tags()
+    process_remaining_tags()
 
     with open(html_file, 'w', encoding='utf-8') as f:
         f.write(str(soup))
@@ -395,8 +391,66 @@ def compare_images(image1, image2):
 
 # Main part of the script
 
+csv_file = "info.csv"
+if os.path.exists(csv_file):
+    print("csv file already exists")
+else:
+    print("creating csv file")
+    headers = ['Index','URL','HTML Folder']
+    with open(csv_file, 'w', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile)
+        
+        # Writing the header
+        csvwriter.writerow(headers)
 
-resources_base_dir = 'legitimate_resources'
+# =============================================================
+# uncomment this for extracting legitimate urls:
+# =============================================================
+
+# file_path = 'top30000urls.csv'
+# # Read the CSV file
+# with open(file_path, 'r') as csv_file:
+#     reader = csv.DictReader(csv_file)
+    
+#     # Extract URLs
+#     urls = [row["Domain"] for row in reader]
+# with open('urls.txt','w') as file:
+#     for url in urls:
+#         file.write(url+'\n')
+
+
+# print('Urls Extracted')
+
+# =============================================================
+# uncomment this for extracting phishing urls
+# =============================================================
+
+# input_file_path = 'phishing_urls.csv'
+# output_file_path = 'urls.txt'
+
+# Read the CSV file and extract URLs
+# urls = []
+# with open(input_file_path, 'r') as csv_file:
+#     reader = csv.reader(csv_file)
+#     for row in reader:
+#         url = row[0]
+#         # Remove http:// and https:// prefixes
+#         if url.startswith("http://"):
+#             url = url[len("http://"):]
+#         elif url.startswith("https://"):
+#             url = url[len("https://"):]
+#         urls.append(url)
+
+# # Write the URLs to the output text file
+# with open(output_file_path, 'w') as output_file:
+#     for url in urls:
+#         output_file.write(url + '\n')
+
+# print(f"Extracted and cleaned URLs have been saved to {output_file_path}")
+
+
+
+resources_base_dir = 'legitimate_resources_testing_features'
 with open('urls.txt', 'r', encoding='utf-8') as f:
     count = 0
     for i, line in enumerate(f):
@@ -406,7 +460,8 @@ with open('urls.txt', 'r', encoding='utf-8') as f:
             url = "https://" + line
             new_cleaned_url = clean_url(url)
             cleaned_url = new_cleaned_url[8:]
-            folder = modify_url(cleaned_url)
+            # folder = modify_url(cleaned_url)
+            folder = cleaned_url
             domain = tldextract.extract(cleaned_url).domain
             outer_folder = os.path.join(resources_base_dir, str(count)+'_'+str(domain))
             print(cleaned_url+" -> "+folder)
@@ -443,39 +498,41 @@ with open('urls.txt', 'r', encoding='utf-8') as f:
 
             logging.info(result)
             full_folder = os.path.join(outer_folder, folder)
-            html_extract = cleaned_url.split('/')[-1]
-            if(html_extract[-4:]=='html'):
-                # print("folder ends with .html")
-                new_folder = full_folder.split('/')
-                folder = full_folder.replace(new_folder[-1],"")
-                index_html = html_extract
-            else:
-                # print("In else case")
-                is_index = False
-                for filename in os.listdir(full_folder):
-                    # print("finding if there is index.html")
-                    # Check if it's a file (not a directory) before printing
-                    if os.path.isfile(os.path.join(full_folder, filename)):
-                    #   print(filename)
-                        if(filename == "index.html"):
-                            index_html = 'index.html'
-                            is_index = True
-                            break
+            # html_extract = cleaned_url.split('/')[-1]
+            # if(html_extract[-4:]=='html'):
+            #     # print("folder ends with .html")
+            #     new_folder = full_folder.split('/')
+            #     folder = full_folder.replace(new_folder[-1],"")
+            #     index_html = html_extract
+            # else:
+            #     # print("In else case")
+            #     is_index = False
+            #     for filename in os.listdir(full_folder):
+            #         # print("finding if there is index.html")
+            #         # Check if it's a file (not a directory) before printing
+            #         if os.path.isfile(os.path.join(full_folder, filename)):
+            #         #   print(filename)
+            #             if(filename == "index.html"):
+            #                 index_html = 'index.html'
+            #                 is_index = True
+            #                 break
                         
-                if is_index == False:
-                    for filename in os.listdir(full_folder):
-                        # print("finding if there is a html file")
-                    # Check if it's a file (not a directory) before printing
-                        if os.path.isfile(os.path.join(full_folder, filename)):
-                            if(filename[-4:]=='html'):
-                                index_html = filename
-                                is_index = True
-                                break
+            #     if is_index == False:
+            #         for filename in os.listdir(full_folder):
+            #             # print("finding if there is a html file")
+            #         # Check if it's a file (not a directory) before printing
+            #             if os.path.isfile(os.path.join(full_folder, filename)):
+            #                 if(filename[-4:]=='html'):
+            #                     index_html = filename
+            #                     is_index = True
+            #                     break
                     
-                    else:
-                        shutil.rmtree(outer_folder, ignore_errors=True)
-                        continue
+            #         else:
+            #             count-= 1
+            #             shutil.rmtree(outer_folder, ignore_errors=True)
+            #             continue
 
+            index_html = 'index.html'
             print("HTML FILE = "+index_html)
             
             # Adjust the path based on your directory structure
@@ -513,6 +570,7 @@ with open('urls.txt', 'r', encoding='utf-8') as f:
             if not os.path.exists(online) or not os.path.exists(offline):
                 # Delete the outer folder
                 logging.warning(f"One of {online} or {offline} is missing. Deleting {outer_folder}...")
+                count-= 1
                 shutil.rmtree(outer_folder, ignore_errors=True)
                 continue
     
@@ -524,6 +582,7 @@ with open('urls.txt', 'r', encoding='utf-8') as f:
             # Can change the boundary to 0.8 also.
             if hist_corr < 0.9:
                 logging.warning(f"Histogram correlation {hist_corr} is less than 0.9. Deleting {outer_folder}...")
+                count-= 1
                 shutil.rmtree(outer_folder, ignore_errors=True)
                 continue
 
@@ -540,6 +599,12 @@ with open('urls.txt', 'r', encoding='utf-8') as f:
                 total_time = end_time - start_time
                 time_file.write(str(cleaned_url)+" download time = "+str(download)+" screenshot time = "+str(ss)+" screenshot compare time = "+str(compare)+" Total Time = "+str(total_time)+"\n")
                 time_file.close()
+
+            # Updating info.csv:
+            info_arr = [count,cleaned_url,html_file]
+            with open('info.csv', 'a', newline='') as csvfile:
+                csvwriter = csv.writer(csvfile)
+                csvwriter.writerow(info_arr)
 
         except Exception as e:
             logging.error(f"An error occurred with URL {line.strip()}: {e}")
