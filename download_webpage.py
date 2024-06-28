@@ -389,7 +389,64 @@ def compare_images(image1, image2):
     return ssim_index, hist_corr
 
 
+
+def extract_legitimate_urls():
+    if os.path.exists('urls.txt'):
+        return
+    file_path = 'top30000urls.csv'
+    # Read the CSV file
+    with open(file_path, 'r') as csv_file:
+        reader = csv.DictReader(csv_file)
+        urls = [row["Domain"] for row in reader]
+    with open('urls.txt','w') as file:
+        for url in urls:
+            file.write(url+'\n')
+
+    print('Legitimiate Urls Extracted')
+
+def extract_phishing_urls():
+    if os.path.exists('urls.txt'):
+        return
+    input_file_path = 'phishing_urls.csv'
+    output_file_path = 'urls.txt'
+
+    # Read the CSV file and extract URLs
+    urls = []
+    with open(input_file_path, 'r') as csv_file:
+        reader = csv.reader(csv_file)
+        for row in reader:
+            url = row[0]+'/'
+            # Remove http:// and https:// prefixes
+            if url.startswith("http://"):
+                url = url[len("http://"):]
+            elif url.startswith("https://"):
+                url = url[len("https://"):]
+            urls.append(url)
+
+    # Write the URLs to the output text file
+    with open(output_file_path, 'w') as output_file:
+        for url in urls:
+            output_file.write(url + '\n')
+
+    print(f"Extracted and cleaned URLs have been saved to {output_file_path}")
+
+
+
 # Main part of the script
+
+print("-----------------------WEB RESOURCES DOWNLOADER---------------------------------")
+ch = input("Enter 1 to download legitimate sources and 2 for downloading phishing sources ")
+
+if ch == "1":
+    extract_legitimate_urls()
+
+elif ch == "2":
+    extract_phishing_urls()
+
+else:
+    print('Wrong choice..Exiting......')
+    exit
+
 
 csv_file = "info.csv"
 if os.path.exists(csv_file):
@@ -402,53 +459,7 @@ else:
         
         # Writing the header
         csvwriter.writerow(headers)
-
-# =============================================================
-# uncomment this for extracting legitimate urls:
-# =============================================================
-
-# file_path = 'top30000urls.csv'
-# # Read the CSV file
-# with open(file_path, 'r') as csv_file:
-#     reader = csv.DictReader(csv_file)
-    
-#     # Extract URLs
-#     urls = [row["Domain"] for row in reader]
-# with open('urls.txt','w') as file:
-#     for url in urls:
-#         file.write(url+'\n')
-
-
-# print('Urls Extracted')
-
-# =============================================================
-# uncomment this for extracting phishing urls
-# =============================================================
-
-# input_file_path = 'phishing_urls.csv'
-# output_file_path = 'urls.txt'
-
-# Read the CSV file and extract URLs
-# urls = []
-# with open(input_file_path, 'r') as csv_file:
-#     reader = csv.reader(csv_file)
-#     for row in reader:
-#         url = row[0]
-#         # Remove http:// and https:// prefixes
-#         if url.startswith("http://"):
-#             url = url[len("http://"):]
-#         elif url.startswith("https://"):
-#             url = url[len("https://"):]
-#         urls.append(url)
-
-# # Write the URLs to the output text file
-# with open(output_file_path, 'w') as output_file:
-#     for url in urls:
-#         output_file.write(url + '\n')
-
-# print(f"Extracted and cleaned URLs have been saved to {output_file_path}")
-
-
+        
 
 resources_base_dir = 'legitimate_resources_testing_features'
 with open('urls.txt', 'r', encoding='utf-8') as f:
@@ -498,39 +509,34 @@ with open('urls.txt', 'r', encoding='utf-8') as f:
 
             logging.info(result)
             full_folder = os.path.join(outer_folder, folder)
-            # html_extract = cleaned_url.split('/')[-1]
-            # if(html_extract[-4:]=='html'):
-            #     # print("folder ends with .html")
-            #     new_folder = full_folder.split('/')
-            #     folder = full_folder.replace(new_folder[-1],"")
-            #     index_html = html_extract
-            # else:
-            #     # print("In else case")
-            #     is_index = False
-            #     for filename in os.listdir(full_folder):
-            #         # print("finding if there is index.html")
-            #         # Check if it's a file (not a directory) before printing
-            #         if os.path.isfile(os.path.join(full_folder, filename)):
-            #         #   print(filename)
-            #             if(filename == "index.html"):
-            #                 index_html = 'index.html'
-            #                 is_index = True
-            #                 break
-                        
-            #     if is_index == False:
-            #         for filename in os.listdir(full_folder):
-            #             # print("finding if there is a html file")
-            #         # Check if it's a file (not a directory) before printing
-            #             if os.path.isfile(os.path.join(full_folder, filename)):
-            #                 if(filename[-4:]=='html'):
-            #                     index_html = filename
-            #                     is_index = True
-            #                     break
+
+            
+            # print("In else case")
+            is_index = False
+            for filename in os.listdir(full_folder):
+                # print("finding if there is index.html")
+                # Check if it's a file (not a directory) before printing
+                if os.path.isfile(os.path.join(full_folder, filename)):
+                #   print(filename)
+                    if(filename == "index.html"):
+                        index_html = 'index.html'
+                        is_index = True
+                        break
                     
-            #         else:
-            #             count-= 1
-            #             shutil.rmtree(outer_folder, ignore_errors=True)
-            #             continue
+            if is_index == False:
+                for filename in os.listdir(full_folder):
+                    # print("finding if there is a html file")
+                # Check if it's a file (not a directory) before printing
+                    if os.path.isfile(os.path.join(full_folder, filename)):
+                        if(filename[-4:]=='html'):
+                            index_html = filename
+                            is_index = True
+                            break
+                
+                else:
+                    count-= 1
+                    shutil.rmtree(outer_folder, ignore_errors=True)
+                    continue
 
             index_html = 'index.html'
             print("HTML FILE = "+index_html)
