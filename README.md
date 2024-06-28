@@ -25,7 +25,7 @@ sudo apt install wget
 
 ### Required Python Libraries and Frameworks Installtion
 ```
-pip install beautifulsoup4 requests urllib3 tldextract chardet selenium webdriver_manager Pillow opencv-python scikit-image
+pip install beautifulsoup4 requests urllib3 tldextract chardet selenium webdriver_manager Pillow opencv-python scikit-image pandas
 ```
 ### Information:
 - urls.txt contains 22172 urls which return 200 https code with requests and also can be sucessfully using wget.
